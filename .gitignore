@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# Artefatos de build (cópia gerada do larpd para a imagem)
+docker/larpd.py
+
+# Resultados de execução e figuras — commitados só após M4 (D17)
+results/
+figs/
+
+# Config da remote-pi mesh (não faz parte do entregável)
+.pi/
