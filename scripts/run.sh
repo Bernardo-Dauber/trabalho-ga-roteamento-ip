@@ -33,13 +33,35 @@ else
   echo "[aviso] impair.sh falhou — impairments NÃO aplicados. Não bloqueia o M1." >&2
 fi
 
-# Subida do larpd (modo larp) — COMENTADO no M1; implementação real é M2 (D6).
-# if [ "$MODE" = "larp" ]; then
-#   for i in 1 2 3 4 5; do
-#     docker exec -d clab-routing-lab-R$i \
-#       sh -c "LARP_RID=10.255.0.$i larpd > /var/log/larpd.log 2>&1"
-#   done
-# fi
+# Subida do larpd somente depois que o zebra aplicou todos os enlaces /30.
+if [ "$MODE" = "larp" ]; then
+  for i in 1 2 3 4 5; do
+    node="clab-routing-lab-R$i"
+    expected=$(python3 -c \
+      'from topology import links_of; import sys; print(len(links_of(sys.argv[1])))' \
+      "R$i")
+    deadline=$((SECONDS + 90))
+    while :; do
+      if addresses=$(docker exec "$node" ip -j -4 addr show 2>/dev/null); then
+        count=$(printf '%s' "$addresses" | python3 -c \
+          'import json, sys; data=json.load(sys.stdin); print(sum(1 for i in data for a in i.get("addr_info", []) if a.get("family") == "inet" and int(a.get("prefixlen", -1)) == 30))')
+      else
+        count=0
+      fi
+      if [ "$count" -ge "$expected" ]; then
+        break
+      fi
+      if [ "$SECONDS" -ge "$deadline" ]; then
+        echo "[erro] $node não ficou pronto: $count/$expected enlaces /30" >&2
+        exit 1
+      fi
+      sleep 1
+    done
+    echo "$node pronto: $count/$expected enlaces /30"
+    docker exec -d "$node" \
+      sh -c "LARP_RID=10.255.0.$i larpd > /var/log/larpd.log 2>&1"
+  done
+fi
 
 echo "modo $MODE ativo"
 MODE=$MODE containerlab inspect -t topology.clab.yml

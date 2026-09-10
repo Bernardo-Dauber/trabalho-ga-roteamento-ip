@@ -105,7 +105,7 @@ def _host_exec(r):
     return [
         f"ip addr add 192.168.{k}.10/24 dev eth1",
         "ip link set eth1 up",
-        f"ip route add default via 192.168.{k}.1",
+        f"ip route replace default via 192.168.{k}.1",
     ]
 
 

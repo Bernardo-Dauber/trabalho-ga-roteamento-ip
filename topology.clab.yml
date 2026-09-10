@@ -12,11 +12,11 @@ topology:
     R3: {kind: linux, binds: ["configs/${MODE}/R3:/etc/frr"]}
     R4: {kind: linux, binds: ["configs/${MODE}/R4:/etc/frr"]}
     R5: {kind: linux, binds: ["configs/${MODE}/R5:/etc/frr"]}
-    h1: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.1.10/24 dev eth1", "ip link set eth1 up", "ip route add default via 192.168.1.1"]}
-    h2: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.2.10/24 dev eth1", "ip link set eth1 up", "ip route add default via 192.168.2.1"]}
-    h3: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.3.10/24 dev eth1", "ip link set eth1 up", "ip route add default via 192.168.3.1"]}
-    h4: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.4.10/24 dev eth1", "ip link set eth1 up", "ip route add default via 192.168.4.1"]}
-    h5: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.5.10/24 dev eth1", "ip link set eth1 up", "ip route add default via 192.168.5.1"]}
+    h1: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.1.10/24 dev eth1", "ip link set eth1 up", "ip route replace default via 192.168.1.1"]}
+    h2: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.2.10/24 dev eth1", "ip link set eth1 up", "ip route replace default via 192.168.2.1"]}
+    h3: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.3.10/24 dev eth1", "ip link set eth1 up", "ip route replace default via 192.168.3.1"]}
+    h4: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.4.10/24 dev eth1", "ip link set eth1 up", "ip route replace default via 192.168.4.1"]}
+    h5: {kind: linux, image: alpine:3.19, exec: ["ip addr add 192.168.5.10/24 dev eth1", "ip link set eth1 up", "ip route replace default via 192.168.5.1"]}
 
   links:
     - endpoints: ["R1:eth1", "R2:eth1"]

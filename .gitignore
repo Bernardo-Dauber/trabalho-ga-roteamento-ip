@@ -11,3 +11,6 @@ figs/
 
 # Config da remote-pi mesh (não faz parte do entregável)
 .pi/
+
+# Artefatos gerados pelo Containerlab no diretório do lab
+clab-routing-lab/
