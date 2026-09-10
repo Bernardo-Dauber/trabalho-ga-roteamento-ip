@@ -1,0 +1,166 @@
+================================================================================
+M3 — Validação dos três caminhos distintos h1 -> h4 (RIP / OSPF / LARP)
+Trabalho I — Roteamento IP (Redes 2, Unisinos)
+================================================================================
+Data da execução: 2026-09-07 (ciclo 2026/2)
+Host: Zorin OS 18.1 (noble) · Docker 29.7.2 · Containerlab 0.79.0 · FRR 9.1.0
+Comandos de referência: relatório §10.
+Nota: `docker` deve rodar no contexto `default` (source scripts/_env.sh).
+
+O produto central do trabalho são três caminhos DIFERENTES e previsíveis para
+h1 -> h4 sobre a MESMA topologia física:
+
+    RIP  (métrica = saltos, ignora latência) ....... satélite R1-R4 (1 salto)
+    OSPF (métrica = custo estático de banda) ....... backbone R1-R2-R3-R4
+    LARP (métrica = latência medida) ............... via R5 (2 saltos, baixa latência)
+
+--------------------------------------------------------------------------------
+1. MODO RIP   (bash scripts/run.sh rip)
+--------------------------------------------------------------------------------
+
+$ docker exec clab-routing-lab-h1 traceroute -n 192.168.4.10
+traceroute to 192.168.4.10 (192.168.4.10), 30 hops max, 46 byte packets
+ 1  192.168.1.1  0.007 ms  0.004 ms  0.005 ms
+ 2  10.0.14.2  201.329 ms  201.505 ms  201.541 ms
+ 3  192.168.4.10  201.561 ms  201.421 ms  201.600 ms
+
+  -> confere com o esperado: 192.168.1.1 -> 10.0.14.2 -> 192.168.4.10
+     (satélite R1-R4: 1 salto de roteamento, ~200 ms por causa do netem de 100 ms)
+
+$ docker exec clab-routing-lab-R1 vtysh -c "show ip rip"
+Codes: R - RIP, C - connected, S - Static, O - OSPF, B - BGP
+     Network            Next Hop         Metric From            Tag Time
+C(i) 10.0.12.0/30       0.0.0.0               1 self              0
+C(i) 10.0.14.0/30       0.0.0.0               1 self              0
+C(i) 10.0.15.0/30       0.0.0.0               1 self              0
+R(n) 10.0.23.0/30       10.0.12.2             2 10.0.12.2         0 02:58
+R(n) 10.0.25.0/30       10.0.12.2             2 10.0.12.2         0 02:58
+R(n) 10.0.34.0/30       10.0.14.2             2 10.0.14.2         0 02:59
+R(n) 10.0.45.0/30       10.0.15.2             2 10.0.15.2         0 02:54
+C(i) 10.255.0.1/32      0.0.0.0               1 self              0
+R(n) 10.255.0.2/32      10.0.12.2             2 10.0.12.2         0 02:58
+R(n) 10.255.0.3/32      10.0.14.2             3 10.0.14.2         0 02:59
+R(n) 10.255.0.4/32      10.0.14.2             2 10.0.14.2         0 02:59
+R(n) 10.255.0.5/32      10.0.15.2             2 10.0.15.2         0 02:54
+C(i) 192.168.1.0/24     0.0.0.0               1 self              0
+R(n) 192.168.2.0/24     10.0.12.2             2 10.0.12.2         0 02:58
+R(n) 192.168.3.0/24     10.0.14.2             3 10.0.14.2         0 02:59
+R(n) 192.168.4.0/24     10.0.14.2             2 10.0.14.2         0 02:59
+R(n) 192.168.5.0/24     10.0.15.2             2 10.0.15.2         0 02:54
+
+  -> R1 reconhece 192.168.4.0/24 via 10.0.14.2 (satélite), métrica 2 (1 salto).
+  -> 192.168.1.0/24 é `C(i)` = conectada e passiva (LAN de R1).
+
+$ show ip route (R1, RIP):
+R>* 192.168.4.0/24 [120/2] via 10.0.14.2, eth3, weight 1, 00:00:37
+   (demais rotas RIP consistentes: R2/R5 via 10.0.12.2 / 10.0.15.2 etc.)
+
+Full-mesh h1..h5 (report §10), modo RIP: 20/20 OK.
+
+--------------------------------------------------------------------------------
+2. MODO OSPF   (bash scripts/run.sh ospf)
+--------------------------------------------------------------------------------
+
+$ docker exec clab-routing-lab-h1 traceroute -n 192.168.4.10
+traceroute to 192.168.4.10 (192.168.4.10), 30 hops max, 46 byte packets
+ 1  192.168.1.1  0.007 ms  0.005 ms  0.005 ms
+ 2  10.0.12.2  60.308 ms  60.306 ms  60.157 ms
+ 3  10.0.23.2  120.280 ms  120.434 ms  120.385 ms
+ 4  10.0.34.2  181.166 ms  180.564 ms  180.813 ms
+ 5  192.168.4.10  180.464 ms  180.484 ms  180.584 ms
+
+  -> confere com o esperado:
+       192.168.1.1 -> 10.0.12.2 -> 10.0.23.2 -> 10.0.34.2 -> 192.168.4.10
+     (backbone R1-R2-R3-R4; custo OSPF 1+1+1+1 = 4, muito menor que via R5 = 21)
+  -> ATENÇÃO: logo após o deploy o OSPF ainda não convergiu (a primeira leitura,
+     ~6 s após subir, mostrou o caminho via R5). Aguardar ~20-30 s antes de
+     medir; após convergir o caminho é o backbone, como acima.
+
+$ docker exec clab-routing-lab-R1 vtysh -c "show ip ospf neighbor"
+Neighbor ID     Pri State           Up Time         Dead Time Address         Interface
+10.255.0.2        1 Full/DR         6.754s            33.162s 10.0.12.2       eth1:10.0.12.1
+10.255.0.5        1 Full/DR         6.763s            33.234s 10.0.15.2       eth2:10.0.15.1
+10.255.0.4        1 Full/DR         1.543s            33.253s 10.0.14.2       eth3:10.0.14.1
+
+  -> todos os vizinhos Full (R1-R2, R1-R5, R1-R4).
+
+$ docker exec clab-routing-lab-R1 vtysh -c "show ip route ospf"   (convergido)
+O>* 10.0.23.0/30 [110/2] via 10.0.12.2, eth1, weight 1
+O>* 10.0.34.0/30 [110/3] via 10.0.12.2, eth1, weight 1
+O>* 10.0.45.0/30 [110/13] via 10.0.12.2, eth1, weight 1
+O>* 192.168.3.0/24 [110/3] via 10.0.12.2, eth1, weight 1
+O>* 192.168.4.0/24 [110/4] via 10.0.12.2, eth1, weight 1
+O>* 192.168.5.0/24 [110/11] via 10.0.15.2, eth2, weight 1
+
+$ docker exec clab-routing-lab-R1 ip route get 192.168.4.10
+192.168.4.10 via 10.0.12.2 dev eth1 src 10.0.12.1 uid 0
+
+Full-mesh h1..h5 (report §10), modo OSPF: 20/20 OK.
+
+--------------------------------------------------------------------------------
+3. MODO LARP   (bash scripts/run.sh larp)
+--------------------------------------------------------------------------------
+
+$ docker exec clab-routing-lab-h1 traceroute -n 192.168.4.10
+traceroute to 192.168.4.10 (192.168.4.10), 30 hops max, 46 byte packets
+ 1  192.168.1.1  0.007 ms  0.004 ms  0.006 ms
+ 2  10.0.15.2  2.209 ms  2.154 ms  2.221 ms
+ 3  10.0.45.1  4.396 ms  4.310 ms  4.460 ms
+ 4  192.168.4.10  4.342 ms  4.333 ms  4.365 ms
+
+  -> confere com o esperado: 192.168.1.1 -> 10.0.15.2 -> 10.0.45.1 -> 192.168.4.10
+     (via R5, 2 saltos; o LARP escolhe o caminho de menor LATÊNCIA medida,
+      não o de menor número de saltos)
+
+$ docker exec clab-routing-lab-R1 ip route show proto 200
+192.168.2.0/24 via 10.0.15.2 dev eth2
+192.168.3.0/24 via 10.0.15.2 dev eth2
+192.168.4.0/24 via 10.0.15.2 dev eth2
+192.168.5.0/24 via 10.0.15.2 dev eth2
+
+  -> os 4 stubs remotos instalados com proto 200 (D8), primeiro salto via R5.
+
+$ docker exec clab-routing-lab-R1 sh -c "ps -o comm= | sort -u"
+docker-start mgmtd ps python3 sh staticd tini watchfrr zebra
+
+  -> HONESTIDADE: nenhum ripd, nenhum ospfd. Só zebra (endereçamento) +
+     staticd + mgmtd do FRR, e `python3` = o larpd.
+
+$ docker exec clab-routing-lab-R1 vtysh -c "show ip rip"      -> ripd is not running
+$ docker exec clab-routing-lab-R1 vtysh -c "show ip ospf neighbor" -> ospfd is not running
+
+$ docker exec clab-routing-lab-R1 tail /var/log/larpd.log
+custo 10.255.0.5: 1.379 ms
+custo 10.255.0.2: 30.729 ms
+custo 10.255.0.4: 102.490 ms
+custo 10.255.0.5: 1.403 ms
+custo 10.255.0.2: 30.582 ms
+custo 10.255.0.4: 102.029 ms
+custo 10.255.0.5: 1.352 ms
+custo 10.255.0.2: 30.499 ms
+custo 10.255.0.4: 101.792 ms
+custo 10.255.0.5: 1.359 ms
+custo 10.255.0.2: 30.419 ms
+custo 10.255.0.4: 101.582 ms
+custo 10.255.0.5: 1.330 ms
+custo 10.255.0.2: 30.364 ms
+custo 10.255.0.4: 101.403 ms
+
+  -> custos medidos pelos ECHOs, próximos do netem configurado:
+       R5   ~1 ms (netem 1 ms)   · R2 ~30 ms (netem 30 ms)   · R4 ~101 ms (netem 100 ms)
+  -> por que via R5 e não pelo backbone: custo medido R1-R5 (~1) + R5-R4 (~1) = ~2
+     é o menor; o caminho por R2-R3-R4 mediria ~30+30+30 = ~90 ms e o satélite
+     R1-R4 mediria ~100 ms. O LARP vê a latência que o RIP ignora.
+
+Full-mesh h1..h5 (report §10), modo LARP: 20/20 OK.
+
+--------------------------------------------------------------------------------
+RESUMO M3 — os três caminhos são distintos e corretos na própria métrica
+--------------------------------------------------------------------------------
+  RIP  : 10.0.14.2                                  (satélite, 1 salto, ~200 ms)
+  OSPF : 10.0.12.2 -> 10.0.23.2 -> 10.0.34.2        (backbone, custo estático 4)
+  LARP : 10.0.15.2 -> 10.0.45.1                     (via R5, latência medida ~2 ms)
+
+  Todos os três modos: conectividade full-mesh 20/20.
+  Modo LARP honesto: sem ripd/ospfd; tabela do FRR vazia nesses protocolos.
+================================================================================
