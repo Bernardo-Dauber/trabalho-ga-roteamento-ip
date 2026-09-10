@@ -25,13 +25,10 @@ MODE=$MODE containerlab deploy -t topology.clab.yml
 sleep 5
 
 # aplica netem (banda/latência) nos enlaces.
-# M1: não-fatal — se falhar (ex.: caps/AppArmor), avisa e segue.
-# Tornar fatal a partir do M2; netem validado à parte.
-if bash scripts/impair.sh; then
-  echo "impairments aplicados (netem)"
-else
-  echo "[aviso] impair.sh falhou — impairments NÃO aplicados. Não bloqueia o M1." >&2
-fi
+# Fatal a partir do M2: os caminhos distintos (M3) e as métricas (M4) dependem
+# dos impairments; sem netem o LARP não tem por que sair do satélite. (Este
+# bloco era não-fatal no M1, §9.2 — divergência decidida e documentada.)
+bash scripts/impair.sh
 
 # Subida do larpd somente depois que o zebra aplicou todos os enlaces /30.
 if [ "$MODE" = "larp" ]; then
