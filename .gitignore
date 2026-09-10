@@ -5,9 +5,12 @@ __pycache__/
 # Artefatos de build (cópia gerada do larpd para a imagem)
 docker/larpd.py
 
-# Resultados de execução e figuras — commitados só após M4 (D17)
+# Resultados de execução e figuras — commitados após validação (D17: padrão)
 results/
 figs/
+
+# (D17: uma execução padrão validada pelo harness é commitada explicitamente
+#  com `git add -f results/ figs/`; rascunhos de desenvolvimento não entram.)
 
 # Config da remote-pi mesh (não faz parte do entregável)
 .pi/

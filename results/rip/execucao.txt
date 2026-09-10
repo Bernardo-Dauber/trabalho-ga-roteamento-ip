@@ -1,0 +1,9 @@
+registro de execução (D11)
+modo: rip
+duracao_s: 300
+inicio: 2026-09-10 14:17:19 -0300
+docker: Docker version 29.7.2, build a7dcaa6
+containerlab: version:0.79.0
+python: Python 3.12.3
+git: 707255fe5c669569fa9953d629c7e5ef8d0708c2
+host: Linux 7.0.0-31-generic
