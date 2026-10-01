@@ -101,7 +101,6 @@ def _path_hops(lsdb, source, target):
     dist, first = dijkstra(lsdb, source)
     if target not in dist:
         return 10 ** 9
-    # Recompute hop count without exposing it as part of the public result.
     pending = [(0.0, 0, source)]
     best = {source: (0.0, 0)}
     while pending:

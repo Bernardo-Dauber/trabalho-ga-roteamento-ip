@@ -17,3 +17,6 @@ figs/
 
 # Artefatos gerados pelo Containerlab no diretório do lab
 clab-routing-lab/
+
+# Material de apresentação (não faz parte do entregável)
+apresentacao/

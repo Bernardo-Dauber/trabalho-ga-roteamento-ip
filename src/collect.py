@@ -134,7 +134,6 @@ def latency():
                 if ts_mode:
                     w.writerow([m.group(1), m.group(2)])
                 else:
-                    # BusyBox: só o RTT no grupo 1; timestamp de chegada
                     w.writerow([f"{time.time():.3f}", m.group(1)])
                 f.flush()
 

@@ -29,7 +29,6 @@ ALL_DAEMONS = ["zebra", "bgpd", "ospfd", "ospf6d", "ripd", "ripngd",
                "sharpd", "pbrd", "staticd", "bfdd", "fabricd", "vrrpd"]
 
 
-# ---------------------------------------------------------------- configs FRR
 def interfaces_block(r, mode):
     out = []
     out.append("interface lo")
@@ -98,10 +97,9 @@ def gen_configs():
             print(f"gerado configs/{mode}/{r}")
 
 
-# ---------------------------------------------------------------- manifesto
 def _host_exec(r):
     """exec do host h<k>: endereço, up da eth1 e default via o gateway da LAN."""
-    k = r[1:]  # "R1" -> "1"
+    k = r[1:]
     return [
         f"ip addr add 192.168.{k}.10/24 dev eth1",
         "ip link set eth1 up",
@@ -137,7 +135,6 @@ def gen_manifest():
     # enlaces R–R na ordem do §6 (a ordem define os nomes eth dentro dos nós)
     for (a, b) in LINKS:
         out.append(f'    - endpoints: ["{a}:{iface_of(a, (a, b))}", "{b}:{iface_of(b, (a, b))}"]')
-    # enlaces roteador -> host (iface LAN na ponta do roteador, eth1 no host)
     for r in ROUTERS:
         k = r[1:]
         lanif = LANS[r][1]
@@ -150,7 +147,6 @@ def gen_manifest():
     print(f"gerado {path}")
 
 
-# ---------------------------------------------------------------- impairments
 def gen_impair():
     """Emit scripts/impair.sh (§9.1): uma chamada netem por ponta dos enlaces R–R.
 
@@ -179,7 +175,6 @@ def gen_impair():
     print(f"gerado {path}")
 
 
-# ---------------------------------------------------------------- main
 def main():
     gen_configs()
     gen_manifest()
